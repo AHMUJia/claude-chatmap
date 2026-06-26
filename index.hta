@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=9">
+<title>Claude 对话总览</title>
+<hta:application id="app" applicationname="ClaudeChats"
+  border="thin" caption="no" showintaskbar="yes" scroll="no" singleinstance="yes" />
+<style>
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; height:100%; }
+  body { font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",Arial,sans-serif;
+         background:#f3f6fb; color:#111827; font-size:14px; }
+
+  /* ---------- 顶部工具栏（固定） ---------- */
+  .topbar { position:fixed; top:0; left:0; right:0; height:60px; z-index:30; color:#fff;
+            padding:0 22px; white-space:nowrap; overflow:hidden; background:#3f86f6;
+            filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#FF3F7BF6', endColorstr='#FF63A6FF', GradientType=1); }
+  .topbar .tb { display:inline-block; vertical-align:middle; line-height:60px; }
+  .topbar h1 { font-size:18px; margin:0 18px 0 2px; font-weight:600; letter-spacing:.5px; color:#fff;
+               display:inline-block; vertical-align:middle; line-height:60px; }
+  button { font-family:inherit; font-size:15px; cursor:pointer; border:none;
+           border-radius:8px; padding:7px 14px; color:#fff; background:#2563eb; vertical-align:middle; }
+  button:hover { background:#1d4ed8; }
+  .topbar button { background:rgba(255,255,255,0.18); color:#f3f8ff; border-radius:20px; padding:8px 16px; }
+  .topbar button:hover { background:rgba(255,255,255,0.32); color:#fff; }
+  .topbar .ghost.active { background:#fff; color:#2f6feb; font-weight:600; }
+  #filter { font-family:inherit; font-size:15px; padding:8px 16px; border-radius:20px;
+            border:none; background:rgba(255,255,255,0.94); color:#1f2937; width:330px; vertical-align:middle; }
+  #filter:focus { outline:none; }
+  .stats { float:right; line-height:60px; color:#e3edff; font-size:14px; }
+  .stats b { color:#fff; font-weight:600; }
+  .wctrl { float:right; line-height:60px; margin-left:16px; }
+  .wbtn { background:rgba(255,255,255,0.12); color:#eaf2ff; font-size:15px; padding:6px 12px;
+          border-radius:8px; line-height:1; margin-left:6px; }
+  .wbtn:hover { background:rgba(255,255,255,0.28); color:#fff; }
+  .wbtn.close:hover { background:#e23b4e; color:#fff; }
+
+  /* ---------- 左侧文件夹树（固定） ---------- */
+  .sidebar { position:fixed; top:60px; left:0; bottom:0; width:330px; overflow:auto;
+             background:#f4f6fb; border-right:1px solid #dbe1ea; padding:6px 0; font-size:18px; }
+  .side-sec { color:#8a93a3; font-size:12px; font-weight:600; padding:9px 14px 4px;
+              letter-spacing:.5px; }
+  .side-item { padding:9px 12px; margin:2px 8px; border-radius:10px; cursor:pointer;
+               color:#27313f; overflow:hidden; white-space:nowrap; }
+  .side-item:hover { background:#e7edf7; }
+  .side-item.active { background:#dbe8ff; }
+  /* 树节点 */
+  .tree-item { padding:6px 10px 6px 6px; margin:1px 8px; border-radius:9px; cursor:pointer;
+               overflow:hidden; white-space:nowrap; color:#27313f; }
+  .tree-item:hover { background:#e7edf7; }
+  .tree-item.active { background:#dbe8ff; }
+  .tri { display:inline-block; width:15px; text-align:center; color:#7a8597;
+         vertical-align:middle; }
+  .tri:hover { color:#2f6feb; }
+  .tri-empty { display:inline-block; width:15px; }
+  .ficon { display:inline-block; margin:0 5px 0 1px; vertical-align:middle; }
+  .tnm { display:inline-block; max-width:215px; overflow:hidden; text-overflow:ellipsis;
+         white-space:nowrap; vertical-align:middle; font-size:18px; }
+  .tree-item.active .tnm, .side-item.active .tnm { color:#174ea6; font-weight:600; }
+  .cnt { float:right; color:#7b8494; font-size:14px; background:#e4e9f2;
+         border-radius:20px; padding:1px 9px; margin-top:3px; }
+  .cnt.dim { background:transparent; color:#a8b1bf; }
+  .tree-item.active .cnt, .side-item.active .cnt { background:#cfe0ff; color:#1d4ed8; }
+
+  /* ---------- 中间对话列表 ---------- */
+  .main { position:fixed; top:60px; left:330px; right:390px; bottom:0; overflow-y:auto;
+          overflow-x:hidden; padding:14px 18px 30px; }
+
+  /* ---------- 右侧详情面板（固定） ---------- */
+  .detail { position:fixed; top:60px; right:0; bottom:0; width:390px; overflow:auto;
+            background:#fff; border-left:1px solid #dbe1ea; padding:16px 18px 40px; }
+  .detail .dt-title { font-size:19px; font-weight:600; color:#111827; word-break:break-all; line-height:25px; }
+  .detail .dt-sec { color:#8a93a3; font-size:12px; font-weight:600; margin:18px 0 6px; letter-spacing:.5px;
+                    border-top:1px solid #eef1f6; padding-top:12px; }
+  .detail .dt-row { font-size:14px; color:#374151; margin:5px 0; word-break:break-all; }
+  .detail .dt-row b { color:#9aa3b2; font-weight:normal; display:inline-block; min-width:58px; }
+  .detail .dt-path { font-family:Consolas,monospace; font-size:13px; color:#174ea6; word-break:break-all; margin-top:4px; }
+  .detail .dt-actions button { margin:0 6px 6px 0; }
+  .detail .dt-prev { background:#f5f7fb; border:1px solid #e6ebf3; border-radius:8px; padding:10px 12px;
+                     font-size:14px; color:#374151; line-height:20px; max-height:170px; overflow:auto;
+                     word-break:break-all; }
+  .detail .dt-prev .lbl { color:#8a93a3; font-size:12px; display:block; margin-bottom:4px; }
+  .detail .dt-rel a { display:block; padding:6px 8px; border-radius:6px; color:#1d4ed8; cursor:pointer;
+                      font-size:14px; word-break:break-all; }
+  .detail .dt-rel a:hover { background:#eef4ff; }
+  .detail .dt-empty { color:#9aa6b8; font-size:15px; padding:34px 4px; line-height:22px; }
+  .detail button { background:#2563eb; color:#fff; padding:8px 13px; font-size:14px; border-radius:6px; }
+  .detail button:hover { background:#1d4ed8; }
+  .detail button.sec { background:#e9edf3; color:#42506a; }
+  .detail button.sec:hover { background:#d3dbe6; }
+  .detail button.danger { background:#fdeaec; color:#c92b3a; }
+  .detail button.danger:hover { background:#f9d3d8; color:#a01825; }
+  .chat-row.sel { background:#eef4ff; box-shadow:inset 3px 0 0 #2f6feb; }
+  .chat-row.sel .chat-title { color:#174ea6; font-weight:600; }
+  .folder-header { background:#eef4ff; border:1px solid #d9e4f7; border-left:4px solid #2f6feb;
+                   border-radius:8px; padding:9px 14px; margin-bottom:10px; overflow:hidden; }
+  .folder-header .fp { font-family:Consolas,"Cascadia Mono",monospace; font-weight:bold;
+                       color:#174ea6; font-size:17px; display:block; word-break:break-all; }
+  .folder-meta { display:block; color:#6b7280; font-size:14px; font-weight:normal;
+                 margin-top:6px; }
+  .copybtn { background:#e3e9f2; color:#475569; padding:2px 9px; font-size:12px;
+             border-radius:6px; }
+  .copybtn:hover { background:#cdd7e6; color:#1e293b; }
+
+  .list { background:#fff; border:1px solid #d9e1ec; border-radius:10px; overflow:hidden; }
+  .chat-row { padding:11px 46px 11px 14px; border-top:1px solid #eef1f6; position:relative; cursor:pointer; }
+  .chat-row:first-child { border-top:none; }
+  .chat-row:hover { background:#f5f8ff; }
+  .cicon { float:left; width:40px; height:40px; line-height:40px; text-align:center;
+           border-radius:11px; font-size:19px; margin-right:13px; }
+  .chat-body { overflow:hidden; }
+  .chat-title { font-size:18px; color:#111827; line-height:23px; word-break:break-all; }
+  .chat-row:hover .chat-title { color:#1d4ed8; }
+  .chat-sub { font-size:14px; color:#7b8494; margin-top:3px; }
+  .fav { position:absolute; right:14px; top:50%; margin-top:-13px; font-size:20px;
+         color:#d7dde6; cursor:pointer; }
+  .fav:hover { color:#f6b73c; }
+  .fav.on { color:#f5a623; }
+  .chat-sub .sf { color:#8a93a3; }
+  .chat-sub .sz { color:#5b8def; font-weight:600; }
+  .hl { background:#fff2a8; color:#111827; }
+
+  .row-actions { display:none; position:absolute; right:8px; top:9px; }
+  .chat-row:hover .row-actions { display:block; }
+  .row-actions button { background:#eef2f8; color:#42506a; padding:4px 9px; font-size:13px;
+                        margin-left:3px; border-radius:6px; }
+  .row-actions button:hover { background:#dde6f3; color:#16335f; }
+  .row-actions button.del { color:#c92b3a; }
+  .row-actions button.del:hover { background:#fdeaec; color:#a01825; }
+
+  /* 右键菜单 */
+  .context-menu { position:absolute; min-width:178px; background:#fff; border:1px solid #cfd6e4;
+                  box-shadow:0 6px 18px rgba(15,23,42,.18); z-index:9999; display:none;
+                  border-radius:8px; padding:5px 0; font-size:15px; }
+  .context-menu div { padding:9px 16px; cursor:pointer; white-space:nowrap; color:#27313f; }
+  .context-menu div:hover { background:#eef4ff; }
+  .context-menu .danger { color:#c92b3a; }
+  .context-menu .danger:hover { background:#fdeaec; }
+
+  /* 紧凑模式 */
+  body.compact .chat-row { padding-top:4px; padding-bottom:4px; }
+  body.compact .chat-sub { display:none; }
+
+  .empty { color:#94a3b8; padding:44px; text-align:center; }
+  .resultline { color:#42506a; font-size:13px; margin:2px 2px 10px; }
+  .resultline b { color:#174ea6; }
+</style>
+</head>
+<body>
+<div class="topbar" onmousedown="dragStart()" ondblclick="topbarDbl()" title="拖动顶栏移动窗口 · 双击最大化/还原">
+  <span class="wctrl">
+    <button class="wbtn" onclick="toggleMax()" title="最大化/还原">▢</button>
+    <button class="wbtn close" onclick="window.close()" title="关闭">✕</button>
+  </span>
+  <h1>💬 Claude 对话总览</h1>
+  <span class="tb"><button onclick="refresh()">🔄 刷新</button></span>
+  <span class="tb"><button id="sort-time" class="ghost active" onclick="setSort('time')">时间↓</button></span>
+  <span class="tb"><button id="sort-title" class="ghost" onclick="setSort('title')">标题</button></span>
+  <span class="tb"><button id="density" class="ghost" onclick="toggleDensity()">紧凑</button></span>
+  <span class="tb"><input id="filter" type="text" placeholder="搜索" onkeyup="onSearch()" /></span>
+  <span class="stats" id="stats"></span>
+</div>
+
+<div class="sidebar" id="sidebar"></div>
+<div class="main"><div id="main"></div></div>
+<div class="detail" id="detail"><div class="dt-empty">单击对话查看详情<br>双击在 WispTerm 中恢复</div></div>
+
+<div id="ctxmenu" class="context-menu">
+  <div onclick="ctxDo('open')">▶ 恢复对话</div>
+  <div onclick="ctxDo('copy')">📋 复制 resume 命令</div>
+  <div onclick="ctxDo('folder')">📂 打开所在文件夹</div>
+  <div onclick="ctxDo('del')" class="danger">🗑 删除这条对话</div>
+</div>
+
+<script language="JScript">
+// 路径自适应：根据本 .hta 自身所在目录定位同目录下的脚本与数据
+function selfDir(){
+  try {
+    var cl = app.commandLine;
+    var m = cl.match(/([A-Za-z]:\\[^"]*\.hta)/i);
+    if(m){ var fso = new ActiveXObject("Scripting.FileSystemObject"); return fso.GetParentFolderName(m[1]); }
+  } catch(e){}
+  return ".";
+}
+var DIR = selfDir();
+var JSON_PATH     = DIR + "\\index.json";
+var PS_SCRIPT     = DIR + "\\refresh.ps1";
+var WISPCTL       = DIR + "\\wisptermctl.exe";
+var RESUME_PS     = DIR + "\\resume-in-wispterm.ps1";
+var DEL_PS        = DIR + "\\delete-conv.ps1";
+var SETTINGS_PATH = DIR + "\\settings.json";
+
+var DATA = [];          // 全部对话（已剔除空对话），按时间倒序
+var GROUPS = {};        // 小写cwd -> [对话]（大小写合并）
+var GROUPREP = {};      // 小写cwd -> 代表性真实路径（首次出现的写法）
+var FORDER = [];        // 文件夹顺序（小写cwd，按最近时间倒序）
+var SELECTED = "__recent__";
+var SORT = "time";      // time | title
+var DENSITY = "comfortable";
+var LASTUPDATE = "";
+var TREE = null;        // 文件夹树根
+var COLLAPSED = {};     // full path -> true 表示折叠
+var SID2CONV = {};      // sessionId -> 对话对象
+var SELSID = "";        // 当前在详情面板查看的对话
+var LASTROW = null;     // 当前高亮的列表行
+var FAVS = {};          // sessionId -> true（收藏）
+
+/* ============ 基础工具 ============ */
+function readUtf8(path){
+  var st = new ActiveXObject("ADODB.Stream");
+  st.Type = 2; st.Charset = "utf-8"; st.Open(); st.LoadFromFile(path);
+  var s = st.ReadText(); st.Close(); return s;
+}
+function writeUtf8(path, text){
+  try {
+    var st = new ActiveXObject("ADODB.Stream");
+    st.Type = 2; st.Charset = "utf-8"; st.Open(); st.WriteText(text);
+    st.SaveToFile(path, 2); st.Close();
+  } catch(e){}
+}
+function parseJson(txt){ try { return JSON.parse(txt); } catch(e){ return eval("(" + txt + ")"); } }
+function esc(s){ if(s==null) return ""; return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function jsArg(s){ return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
+function attr(s){ return esc(s).replace(/"/g,"&quot;"); }
+function pad2(n){ return n<10 ? "0"+n : ""+n; }
+function fmtSize(b){
+  if(b == null || b === "") return "";
+  b = Number(b);
+  if(b < 1024) return b + " B";
+  if(b < 1048576) return (Math.round(b/102.4)/10) + " KB";
+  return (Math.round(b/104857.6)/10) + " MB";
+}
+// 给每条对话一个稳定的彩色图标（按 sessionId 哈希）
+var ICONS = [
+  {bg:"#e3f0ff",c:"#2f6feb",t:"💬"},{bg:"#e8e9ff",c:"#5b54e6",t:"📁"},
+  {bg:"#e6f7ee",c:"#16a36a",t:"🎤"},{bg:"#eaf3ff",c:"#3a86d6",t:"☁️"},
+  {bg:"#eef0ff",c:"#5566e6",t:"📈"},{bg:"#f3ecff",c:"#8b5cf6",t:"⚗️"},
+  {bg:"#fff0e6",c:"#e98b3a",t:"🧬"},{bg:"#ffe9f0",c:"#e34f86",t:"🌸"},
+  {bg:"#eaf0f6",c:"#5b7088",t:"📊"},{bg:"#fff3e0",c:"#d9912b",t:"📖"},
+  {bg:"#ffe6ee",c:"#e3506e",t:"❤️"},{bg:"#e6f0ff",c:"#2f6feb",t:"📝"}
+];
+function iconFor(s){
+  var k = String(s.sessionId), h = 0;
+  for(var i=0;i<k.length;i++) h = (h*31 + k.charCodeAt(i)) & 0x7fffffff;
+  return ICONS[h % ICONS.length];
+}
+
+function lastSeg(cwd){
+  if(!cwd) return "";
+  if(cwd.charAt(0)=="(") return cwd;
+  var t = cwd; while(t.length && t.charAt(t.length-1)=="\\") t = t.substring(0,t.length-1);
+  var i = t.lastIndexOf("\\");
+  return i>=0 ? t.substring(i+1) : t;
+}
+
+/* 相对时间：今天 / 昨天 / M月D日 / YYYY-MM-DD（完整时间放 tooltip） */
+function relTime(modified){
+  if(!modified || modified.length < 16) return modified || "";
+  var y=+modified.substr(0,4), mo=+modified.substr(5,2), d=+modified.substr(8,2);
+  var hh=modified.substr(11,2), mm=modified.substr(14,2);
+  var now = new Date();
+  if(y==now.getFullYear() && mo==(now.getMonth()+1) && d==now.getDate()) return "今天 "+hh+":"+mm;
+  var ye = new Date(now.getFullYear(), now.getMonth(), now.getDate()-1);
+  if(y==ye.getFullYear() && mo==(ye.getMonth()+1) && d==ye.getDate()) return "昨天 "+hh+":"+mm;
+  if(y==now.getFullYear()) return mo+"月"+d+"日";
+  return y+"-"+pad2(mo)+"-"+pad2(d);
+}
+
+/* 关键词高亮（在已转义文本上做） */
+function hl(text, term){
+  var e = esc(text);
+  if(!term) return e;
+  var et = esc(term).toLowerCase();
+  if(!et) return e;
+  var le = e.toLowerCase(), out = "", from = 0, idx;
+  while((idx = le.indexOf(et, from)) >= 0){
+    out += e.substring(from, idx) + '<span class="hl">' + e.substring(idx, idx+et.length) + '</span>';
+    from = idx + et.length;
+  }
+  return out + e.substring(from);
+}
+
+/* ============ 启动 / 恢复对话（保留 wisptermctl spawn） ============ */
+function psFallback(cwd, sid){
+  var sh = new ActiveXObject("WScript.Shell");
+  var cmd = 'powershell.exe -NoExit -Command "Set-Location -LiteralPath \'' + cwd + '\'; claude -r ' + sid + '"';
+  sh.Run(cmd, 1, false);
+}
+function openConv(cwd, sid){
+  if (cwd.charAt(0) == "("){ alert("这个对话没有记录有效的文件夹，无法定位。"); return; }
+  // 调用脚本：在运行中的 WispTerm 新开标签并 claude -r 恢复；脚本内部自带回退
+  try {
+    var sh = new ActiveXObject("WScript.Shell");
+    var cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File "' + RESUME_PS +
+              '" -Cwd "' + cwd + '" -Sid ' + sid;
+    sh.Run(cmd, 0, false);
+  } catch(e){
+    try { psFallback(cwd, sid); } catch(e2){ alert("启动失败: " + e2.message); }
+  }
+}
+function openFolder(cwd){
+  if (cwd.charAt(0) == "(") return;
+  try { (new ActiveXObject("WScript.Shell")).Run('explorer.exe "' + cwd + '"', 1, false); }
+  catch(e){ alert("打开失败: " + e.message); }
+}
+function copyCmd(cwd, sid){
+  var cmd = (cwd.charAt(0)=="(") ? "claude -r "+sid : "cd '"+cwd+"'; claude -r "+sid;
+  window.clipboardData.setData("Text", cmd);
+}
+function copyText(t){ window.clipboardData.setData("Text", t); }
+
+/* ============ 删除对话（移到回收区 deleted\） ============ */
+function delConv(cwd, sid){
+  if(!confirm("确定删除这条对话吗？\n\n它会从 Claude 中移除（不再能恢复），文件移到\n  F:\\0_index\\deleted\\\n如误删可去那里找回。")) return;
+  try {
+    var sh = new ActiveXObject("WScript.Shell");
+    sh.Run('powershell -NoProfile -ExecutionPolicy Bypass -File "' + DEL_PS + '" -Sid ' + sid, 0, true);
+  } catch(e){ alert("删除失败: " + e.message); return; }
+  refresh();   // 重新扫描，列表里就没有它了
+  if(SELSID == sid){
+    SELSID = "";
+    document.getElementById("detail").innerHTML =
+      '<div class="dt-empty">单击对话查看详情<br>双击在 WispTerm 中恢复</div>';
+  }
+}
+
+/* ============ 右键菜单 ============ */
+var CTX_CWD = "", CTX_SID = "";
+function showCtx(ev, cwd, sid){
+  CTX_CWD = cwd; CTX_SID = sid;
+  var m = document.getElementById("ctxmenu");
+  m.style.display = "block";
+  var x = ev.clientX + document.body.scrollLeft;
+  var y = ev.clientY + document.body.scrollTop;
+  if(x + 180 > document.body.scrollLeft + document.body.clientWidth) x -= 180;
+  m.style.left = x + "px";
+  m.style.top  = y + "px";
+  return false;   // 阻止系统默认右键菜单
+}
+function hideCtx(){ var m=document.getElementById("ctxmenu"); if(m) m.style.display="none"; }
+function ctxDo(act){
+  hideCtx();
+  if(act=="open")   openConv(CTX_CWD, CTX_SID);
+  else if(act=="copy")   copyCmd(CTX_CWD, CTX_SID);
+  else if(act=="folder") openFolder(CTX_CWD);
+  else if(act=="del")    delConv(CTX_CWD, CTX_SID);
+}
+
+/* ============ 设置持久化 ============ */
+function loadSettings(){
+  try {
+    var s = parseJson(readUtf8(SETTINGS_PATH));
+    if(s){
+      if(s.sort) SORT = s.sort;
+      if(s.density) DENSITY = s.density;
+      if(s.selectedFolder) SELECTED = s.selectedFolder;
+      if(s.favs) FAVS = s.favs;
+    }
+  } catch(e){}
+}
+function saveSettings(){
+  var o = { sort:SORT, density:DENSITY, selectedFolder:SELECTED, favs:FAVS };
+  try { writeUtf8(SETTINGS_PATH, JSON.stringify(o)); } catch(e){}
+}
+function favCount(){ var n=0; for(var k in FAVS){ if(FAVS.hasOwnProperty(k) && FAVS[k]) n++; } return n; }
+function toggleFav(sid){
+  if(FAVS[sid]) { FAVS[sid]=false; } else { FAVS[sid]=true; }
+  saveSettings();
+  var r = document.getElementById("star-"+sid); if(r) r.className = "fav" + (FAVS[sid]?" on":"");
+  var d = document.getElementById("dstar"); if(d && SELSID==sid) d.className = "fav big" + (FAVS[sid]?" on":"");
+  renderSidebar();
+  if(SELECTED=="__fav__") renderMain();
+}
+
+/* ============ 数据 ============ */
+function buildGroups(){
+  GROUPS = {}; FORDER = []; GROUPREP = {}; SID2CONV = {};
+  // 按小写 cwd 合并（Windows 路径不区分大小写），显示用首次出现的写法
+  for(var i=0;i<DATA.length;i++){
+    var s = DATA[i], lc = String(s.cwd).toLowerCase();
+    SID2CONV[s.sessionId] = s;
+    if(!GROUPS[lc]){ GROUPS[lc] = []; GROUPREP[lc] = s.cwd; FORDER.push(lc); }
+    GROUPS[lc].push(s);
+  }
+  // DATA 已按 ts 倒序，故每组第一个即该文件夹最近的对话
+  FORDER.sort(function(a,b){ var ra=GROUPS[a][0].modified, rb=GROUPS[b][0].modified; return ra<rb?1:(ra>rb?-1:0); });
+  LASTUPDATE = DATA.length ? DATA[0].modified : "";
+  buildTree();
+}
+
+/* ============ 文件夹树（像资源管理器） ============ */
+function newNode(name, full){ return { name:name, full:full, kids:{}, korder:[], direct:0, recent:0 }; }
+function buildTree(){
+  TREE = newNode("", "");
+  for(var i=0;i<FORDER.length;i++){
+    var lc = FORDER[i];
+    if(lc.charAt(0) == "(") continue;            // 未知文件夹单列
+    var rep = GROUPREP[lc] || lc;
+    var lparts = lc.split("\\"), rparts = rep.split("\\");
+    var node = TREE, acc = "";
+    for(var p=0;p<lparts.length;p++){
+      var seg = lparts[p];                        // 小写段做 key（大小写合并）
+      if(seg == "") continue;
+      var disp = (p < rparts.length) ? rparts[p] : seg;   // 显示用真实写法
+      acc = (acc == "") ? seg : (acc + "\\" + seg);
+      if(!node.kids[seg]){ node.kids[seg] = newNode(disp, acc); node.korder.push(seg); }
+      node = node.kids[seg];
+    }
+    node.direct = GROUPS[lc].length;
+  }
+  calcRecent(TREE);
+  sortKids(TREE);
+}
+// 每个节点子树里最近一条对话的 ts
+function calcRecent(node){
+  var r = 0;
+  if(node.direct > 0 && GROUPS[node.full] && GROUPS[node.full][0]){
+    var t = GROUPS[node.full][0].ts || 0; if(t > r) r = t;
+  }
+  for(var i=0;i<node.korder.length;i++){ var cr = calcRecent(node.kids[node.korder[i]]); if(cr > r) r = cr; }
+  node.recent = r;
+  return r;
+}
+// 按最近使用倒序排（盘符、子文件夹都是越新越靠上）
+function sortKids(node){
+  node.korder.sort(function(a,b){ return (node.kids[b].recent||0) - (node.kids[a].recent||0); });
+  for(var i=0;i<node.korder.length;i++) sortKids(node.kids[node.korder[i]]);
+}
+function subtotal(node){
+  var t = node.direct;
+  for(var i=0;i<node.korder.length;i++) t += subtotal(node.kids[node.korder[i]]);
+  return t;
+}
+
+function sortList(list){
+  var a = list.slice(0);
+  if(SORT=="title") a.sort(function(x,y){ var tx=String(x.title).toLowerCase(), ty=String(y.title).toLowerCase(); return tx<ty?-1:(tx>ty?1:0); });
+  else a.sort(function(x,y){ return (y.ts||0)-(x.ts||0); });
+  return a;
+}
+
+/* ============ 搜索解析 ============ */
+function parseQuery(raw){
+  var q = { plain:"", folder:"", date:"", after:"", before:"" }, plains=[];
+  var parts = raw.split(/\s+/);
+  for(var i=0;i<parts.length;i++){
+    var p = parts[i]; if(p=="") continue;
+    var lp = p.toLowerCase();
+    if(lp.indexOf("folder:")==0)      q.folder = p.substring(7).toLowerCase();
+    else if(lp.indexOf("date:")==0)   q.date   = p.substring(5);
+    else if(lp.indexOf("after:")==0)  q.after  = p.substring(6);
+    else if(lp.indexOf("before:")==0) q.before = p.substring(7);
+    else plains.push(p);
+  }
+  q.plain = plains.join(" ").toLowerCase();
+  return q;
+}
+function searching(q){ return q.plain || q.folder || q.date || q.after || q.before; }
+function matchQ(s, q){
+  var title=String(s.title).toLowerCase(), cwd=String(s.cwd).toLowerCase(), dp=String(s.modified).substring(0,10);
+  if(q.plain  && title.indexOf(q.plain)<0 && cwd.indexOf(q.plain)<0) return false;
+  if(q.folder && cwd.indexOf(q.folder)<0) return false;
+  if(q.date   && dp!=q.date)   return false;
+  if(q.after  && dp<q.after)   return false;
+  if(q.before && dp>q.before)  return false;
+  return true;
+}
+
+/* ============ 渲染：侧栏（文件夹树） ============ */
+function renderNode(node, depth, out){
+  for(var i=0;i<node.korder.length;i++){
+    var c = node.kids[node.korder[i]];
+    var hasKids = c.korder.length > 0;
+    var collapsed = COLLAPSED[c.full] ? true : false;
+    var pad = 6 + depth * 16;
+    var sel = (SELECTED == c.full) ? " active" : "";
+    // 行点击：有直接对话→选中显示；纯容器→展开/折叠
+    var rowClick = (c.direct > 0)
+        ? 'onclick="selectFolder(\'' + jsArg(c.full) + '\')"'
+        : 'onclick="toggleNode(\'' + jsArg(c.full) + '\')"';
+    out.push('<div class="tree-item' + sel + '" style="padding-left:' + pad + 'px" title="' + attr(GROUPREP[c.full] || c.full) + '" ' + rowClick + '>');
+    if(hasKids){
+      var tri = collapsed ? '&#9656;' : '&#9662;';   // ▸ / ▾
+      out.push('<span class="tri" onclick="event.cancelBubble=true;toggleNode(\'' + jsArg(c.full) + '\')">' + tri + '</span>');
+    } else {
+      out.push('<span class="tri-empty"></span>');
+    }
+    var nm = esc(c.name);
+    if(c.name.charAt(c.name.length-1) == ":") nm += "\\";   // 盘符显示 F:\
+    out.push('<span class="ficon">' + (hasKids ? "📁" : "📂") + '</span>');
+    out.push('<span class="tnm">' + nm + '</span>');
+    if(c.direct > 0){
+      out.push('<span class="cnt">' + c.direct + '</span>');
+    } else {
+      var st = subtotal(c);
+      if(st > 0) out.push('<span class="cnt dim">' + st + '</span>');
+    }
+    out.push('</div>');
+    if(hasKids && !collapsed) renderNode(c, depth+1, out);
+  }
+}
+function renderSidebar(){
+  var out = [];
+  out.push('<div class="side-sec">导航</div>');
+  out.push('<div class="side-item' + (SELECTED=="__recent__"?" active":"") + '" onclick="selectFolder(\'__recent__\')">' +
+           '<span class="ficon">🕒</span><span class="tnm">最近全部</span><span class="cnt">' + DATA.length + '</span></div>');
+  out.push('<div class="side-item' + (SELECTED=="__fav__"?" active":"") + '" onclick="selectFolder(\'__fav__\')">' +
+           '<span class="ficon">⭐</span><span class="tnm">收藏</span><span class="cnt">' + favCount() + '</span></div>');
+  out.push('<div class="side-sec">文件夹</div>');
+  renderNode(TREE, 0, out);
+  // 未知文件夹的对话单列
+  for(var i=0;i<FORDER.length;i++){
+    var cwd = FORDER[i];
+    if(cwd.charAt(0) != "(") continue;
+    var sel = (SELECTED==cwd) ? " active" : "";
+    out.push('<div class="tree-item' + sel + '" style="padding-left:6px" onclick="selectFolder(\'' + jsArg(cwd) + '\')">' +
+             '<span class="tri-empty"></span><span class="ficon">❓</span><span class="tnm">' + esc(cwd) + '</span>' +
+             '<span class="cnt">' + GROUPS[cwd].length + '</span></div>');
+  }
+  document.getElementById("sidebar").innerHTML = out.join("");
+}
+function toggleNode(full){
+  if(COLLAPSED[full]) { delete COLLAPSED[full]; } else { COLLAPSED[full] = true; }
+  renderSidebar();
+}
+
+/* ============ 详情面板（单击对话） ============ */
+function highlightRow(sid){
+  if(LASTROW){ LASTROW.className = LASTROW.className.replace(/ ?sel/g, ""); }
+  var r = document.getElementById("row-" + sid);
+  if(r){ r.className += " sel"; LASTROW = r; }
+}
+function showDetail(sid){
+  SELSID = sid;
+  highlightRow(sid);
+  var s = SID2CONV[sid];
+  var d = document.getElementById("detail");
+  if(!s){ d.innerHTML = '<div class="dt-empty">未找到该对话。</div>'; return; }
+  var folder = (s.cwd.charAt(0)=="(") ? s.cwd : lastSeg(s.cwd);
+  var h = '<div class="dt-title">' + esc(s.title) + '</div>';
+  h += '<div class="dt-sec">信息</div>';
+  h += '<div class="dt-row"><b>时间</b>' + esc(relTime(s.modified)) + ' &nbsp;<span style="color:#9aa3b2">' + esc(s.modified) + '</span></div>';
+  h += '<div class="dt-row"><b>大小</b>' + esc(fmtSize(s.size)) + '</div>';
+  h += '<div class="dt-row"><b>文件夹</b>' + esc(folder) + '</div>';
+  h += '<div class="dt-path">' + esc(s.cwd) + '</div>';
+  h += '<div class="dt-sec">快捷操作</div><div class="dt-actions">';
+  h += '<button onclick="openConv(\'' + jsArg(s.cwd) + '\',\'' + s.sessionId + '\')">▶ 恢复对话</button>';
+  h += '<button class="sec" onclick="openFolder(\'' + jsArg(s.cwd) + '\')">📂 打开文件夹</button>';
+  h += '<button class="sec" onclick="copyText(\'' + jsArg(s.cwd) + '\')">复制路径</button>';
+  h += '<button class="sec" onclick="copyText(\'' + jsArg(s.title) + '\')">复制标题</button>';
+  h += '<button class="danger" onclick="delConv(\'' + jsArg(s.cwd) + '\',\'' + s.sessionId + '\')">🗑 删除对话</button>';
+  h += '</div>';
+  if(s.lastUser || s.lastReply){
+    h += '<div class="dt-sec">内容预览</div>';
+    if(s.lastUser)  h += '<div class="dt-prev"><span class="lbl">最近提问</span>' + esc(s.lastUser) + '</div>';
+    if(s.lastReply) h += '<div class="dt-prev" style="margin-top:8px"><span class="lbl">最后回复</span>' + esc(s.lastReply) + '</div>';
+  }
+  var grp = GROUPS[String(s.cwd).toLowerCase()] || [];
+  var rel = [];
+  for(var i=0;i<grp.length && rel.length<3;i++){ if(grp[i].sessionId != sid) rel.push(grp[i]); }
+  if(rel.length){
+    h += '<div class="dt-sec">同文件夹最近</div><div class="dt-rel">';
+    for(var j=0;j<rel.length;j++) h += '<a onclick="showDetail(\'' + rel[j].sessionId + '\')">• ' + esc(rel[j].title) + '</a>';
+    h += '</div>';
+  }
+  d.innerHTML = h;
+}
+
+/* ============ 渲染：一行对话 ============ */
+function rowHtml(s, term, showFolder){
+  var sub = '<span title="' + attr(s.modified) + '">' + esc(relTime(s.modified)) + '</span>';
+  var sz = fmtSize(s.size);
+  if(sz) sub += ' &nbsp;·&nbsp; <span class="sz" title="会话文件大小">' + sz + '</span>';
+  if(showFolder) sub += ' &nbsp;·&nbsp; <span class="sf" title="' + attr(s.cwd) + '">📁 ' + esc(lastSeg(s.cwd)) + '</span>';
+  var ic = iconFor(s);
+  return '<div class="chat-row" id="row-' + s.sessionId + '" title="单击看详情 · 双击恢复 · 右键更多" ' +
+         'onclick="showDetail(\'' + s.sessionId + '\')" ' +
+         'ondblclick="openConv(\'' + jsArg(s.cwd) + '\',\'' + s.sessionId + '\')" ' +
+         'oncontextmenu="return showCtx(event,\'' + jsArg(s.cwd) + '\',\'' + s.sessionId + '\')">' +
+         '<span class="cicon" style="background:' + ic.bg + ';color:' + ic.c + '">' + ic.t + '</span>' +
+         '<div class="chat-body">' +
+           '<div class="chat-title">' + hl(s.title, term) + '</div>' +
+           '<div class="chat-sub">' + sub + '</div>' +
+         '</div>' +
+         '<span class="fav' + (FAVS[s.sessionId]?" on":"") + '" id="star-' + s.sessionId + '" title="收藏" ' +
+         'onclick="event.cancelBubble=true;toggleFav(\'' + s.sessionId + '\')">&#9733;</span>' +
+         '</div>';
+}
+
+/* ============ 渲染：主区 ============ */
+function renderMain(){
+  var raw = document.getElementById("filter").value;
+  var q = parseQuery(raw);
+  var mainEl = document.getElementById("main");
+
+  if(searching(q)){
+    var res = [], folders = {};
+    for(var i=0;i<DATA.length;i++){ if(matchQ(DATA[i], q)){ res.push(DATA[i]); folders[DATA[i].cwd]=1; } }
+    res = sortList(res);
+    var fc=0; for(var x in folders){ if(folders.hasOwnProperty(x)) fc++; }
+    var label = q.plain ? ('“' + esc(q.plain) + '”') : '（条件）';
+    var html = '<div class="resultline">搜索 ' + label + '：找到 <b>' + res.length + '</b> 条，来自 <b>' + fc + '</b> 个文件夹</div>';
+    if(res.length==0){ html += '<div class="empty">没有匹配的对话。</div>'; }
+    else {
+      html += '<div class="list">';
+      for(var j=0;j<res.length;j++) html += rowHtml(res[j], q.plain, true);
+      html += '</div>';
+    }
+    mainEl.innerHTML = html;
+    setStats(res.length, "搜索 " + label + "：" + res.length + " 条 · " + fc + " 文件夹");
+    return;
+  }
+
+  // 收藏视图
+  if(SELECTED=="__fav__"){
+    var favs=[];
+    for(var i=0;i<DATA.length;i++){ if(FAVS[DATA[i].sessionId]) favs.push(DATA[i]); }
+    favs = sortList(favs);
+    var fh = '<div class="folder-header"><span class="fp">⭐ 收藏</span>' +
+             '<span class="folder-meta">' + favs.length + ' 个对话</span></div>';
+    if(favs.length==0){ fh += '<div class="empty">还没有收藏。点对话右侧的 ★ 即可收藏。</div>'; }
+    else { fh += '<div class="list">'; for(var k=0;k<favs.length;k++) fh += rowHtml(favs[k], "", true); fh += '</div>'; }
+    mainEl.innerHTML = fh; setStats(favs.length, ""); return;
+  }
+
+  // 非搜索：最近全部 或 某个文件夹
+  if(SELECTED=="__recent__"){
+    var all = sortList(DATA);
+    var h = '<div class="folder-header"><span class="folder-meta">' + DATA.length + ' 个对话 · 最近 ' + esc(LASTUPDATE) + '</span>' +
+            '<span class="fp">🕒 最近全部对话</span></div><div class="list">';
+    for(var k=0;k<all.length;k++) h += rowHtml(all[k], "", true);
+    h += '</div>';
+    mainEl.innerHTML = h;
+    setStats(all.length, "");
+    return;
+  }
+
+  var list = GROUPS[SELECTED] ? sortList(GROUPS[SELECTED]) : [];
+  var recent = GROUPS[SELECTED] ? GROUPS[SELECTED][0].modified : "";
+  var repPath = GROUPREP[SELECTED] || SELECTED;   // 显示/操作用真实路径写法
+  var hh = '<div class="folder-header">' +
+           '<span class="fp" title="' + attr(repPath) + '">📁 ' + esc(repPath) + '</span>' +
+           '<span class="folder-meta">' + list.length + ' 个对话 · 最近 ' + esc(recent) +
+           ' &nbsp; <button class="copybtn" onclick="copyText(\'' + jsArg(repPath) + '\')">复制路径</button>' +
+           '<button class="copybtn" onclick="openFolder(\'' + jsArg(repPath) + '\')">📂 打开</button></span>' +
+           '</div><div class="list">';
+  for(var m=0;m<list.length;m++) hh += rowHtml(list[m], "", false);
+  hh += '</div>';
+  mainEl.innerHTML = hh;
+  setStats(list.length, "");
+}
+
+function setStats(shown, searchLine){
+  var base = '<b>' + DATA.length + '</b> 对话 · <b>' + FORDER.length + '</b> 文件夹 · 当前 <b>' + shown + '</b> 条';
+  if(searchLine) base = searchLine;
+  else if(LASTUPDATE) base += ' · 更新 ' + esc(LASTUPDATE);
+  document.getElementById("stats").innerHTML = base;
+}
+
+/* ============ 交互 ============ */
+function selectFolder(cwd){
+  SELECTED = cwd;
+  document.getElementById("filter").value = "";   // 切文件夹时清空搜索
+  saveSettings(); renderSidebar(); renderMain();
+}
+function onSearch(){ renderMain(); }
+function setSort(s){
+  SORT = s;
+  document.getElementById("sort-time").className  = "ghost" + (s=="time" ?" active":"");
+  document.getElementById("sort-title").className = "ghost" + (s=="title"?" active":"");
+  saveSettings(); renderMain();
+}
+function applyDensity(){
+  document.body.className = (DENSITY=="compact") ? "compact" : "";
+  document.getElementById("density").innerHTML = (DENSITY=="compact") ? "舒适" : "紧凑";
+  document.getElementById("density").className = "ghost" + (DENSITY=="compact"?" active":"");
+}
+function toggleDensity(){ DENSITY = (DENSITY=="compact")?"comfortable":"compact"; applyDensity(); saveSettings(); }
+
+/* ============ 加载 / 刷新 ============ */
+function onlyNamed(arr){
+  var out = [];
+  for(var i=0;i<arr.length;i++){
+    var t = arr[i] ? arr[i].title : null;
+    if(t==null) continue;
+    t = String(t);
+    if(t==="" || t==="(未命名对话)") continue;
+    if(t.substr(0,20)==="[Request interrupted") continue;   // 被打断的空会话
+    out.push(arr[i]);
+  }
+  return out;
+}
+function load(){
+  try { DATA = onlyNamed(parseJson(readUtf8(JSON_PATH))); }
+  catch(e){
+    DATA = [];
+    document.getElementById("main").innerHTML =
+      "<div class='empty'>还没有索引文件，点上面「🔄 刷新」生成。<br>(" + esc(e.message) + ")</div>";
+    return;
+  }
+  buildGroups();
+  // 选中项若已不存在则回退到“最近全部”
+  if(SELECTED!="__recent__" && !GROUPS[SELECTED]) SELECTED = "__recent__";
+  renderSidebar(); renderMain();
+}
+function refresh(){
+  document.getElementById("stats").innerHTML = "刷新中…请稍候";
+  try {
+    var sh = new ActiveXObject("WScript.Shell");
+    sh.Run('powershell -NoProfile -ExecutionPolicy Bypass -File "' + PS_SCRIPT + '"', 0, true);
+  } catch(e){ alert("刷新失败: " + e.message); }
+  load();
+}
+
+/* ============ 启动 ============ */
+try {
+  var W = 1280, H = 860;
+  window.resizeTo(W, H);
+  window.moveTo(Math.max(0,(screen.availWidth-W)/2), Math.max(0,(screen.availHeight-H)/2));
+} catch(e){}
+
+loadSettings();
+applyDensity();
+document.getElementById("sort-time").className  = "ghost" + (SORT=="time" ?" active":"");
+document.getElementById("sort-title").className = "ghost" + (SORT=="title"?" active":"");
+document.onclick = function(){ hideCtx(); };   // 点别处关右键菜单
+load();
+
+// 给无边框窗口加 Win11 圆角 + 投影（DWM/Win32，由外部脚本应用）
+try {
+  (new ActiveXObject("WScript.Shell")).Run(
+    'powershell -NoProfile -ExecutionPolicy Bypass -File "' + DIR + '\\style-window.ps1"', 0, false);
+} catch(e){}
+
+/* ============ 无标题栏窗口：拖动 / 最大化 / 关闭 ============ */
+var DRAG=false, DSX=0, DSY=0, DWX=0, DWY=0;
+function dragStart(){
+  var e = window.event, t = e.srcElement;
+  if(t && (t.tagName=="BUTTON" || t.tagName=="INPUT")) return;   // 点按钮/输入框不拖
+  DRAG=true; DSX=e.screenX; DSY=e.screenY; DWX=window.screenLeft; DWY=window.screenTop;
+}
+document.onmousemove = function(){
+  if(!DRAG) return;
+  var e = window.event;
+  window.moveTo(DWX + (e.screenX - DSX), DWY + (e.screenY - DSY));
+};
+document.onmouseup = function(){ DRAG=false; };
+var MAXED=false;
+function toggleMax(){
+  if(!MAXED){ window.moveTo(0,0); window.resizeTo(screen.availWidth, screen.availHeight); MAXED=true; }
+  else { var w=1280, h=880; window.resizeTo(w,h);
+         window.moveTo(Math.max(0,(screen.availWidth-w)/2), Math.max(0,(screen.availHeight-h)/2)); MAXED=false; }
+}
+function topbarDbl(){
+  var t = window.event.srcElement;
+  if(t && (t.tagName=="INPUT" || t.tagName=="BUTTON")) return;
+  toggleMax();
+}
+</script>
+</body>
+</html>

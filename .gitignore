@@ -1,0 +1,13 @@
+# 本地生成的数据 / 设置（含个人对话信息，勿提交）
+index.json
+settings.json
+deleted/
+
+# WispTerm 控制客户端二进制：请自行从 WispTerm 获取放入，不随仓库分发
+wisptermctl.exe
+wisptermctl
+
+# 备份/临时
+*.bak
+*.bak-*
+_extracted.txt
