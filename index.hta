@@ -567,7 +567,7 @@ function renderNode(node, depth, out){
 }
 function renderSidebar(){
   var out = [];
-  out.push('<div class="side-sec">' + t("nav") + '</div>');
+  out.push('<div style="height:6px"></div>');
   out.push('<div class="side-item' + (SELECTED=="__recent__"?" active":"") + '" onclick="selectFolder(\'__recent__\')">' +
            '<span class="ficon">🕒</span><span class="tnm">' + t("recentAll") + '</span><span class="cnt">' + DATA.length + '</span></div>');
   out.push('<div class="side-item' + (SELECTED=="__fav__"?" active":"") + '" onclick="selectFolder(\'__fav__\')">' +
