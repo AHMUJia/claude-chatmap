@@ -31,8 +31,8 @@
   .stats { float:right; line-height:60px; color:#e3edff; font-size:14px; }
   .stats b { color:#fff; font-weight:600; }
   .wctrl { float:right; line-height:60px; margin-left:16px; }
-  .wbtn { background:rgba(255,255,255,0.12); color:#eaf2ff; font-size:15px; padding:6px 12px;
-          border-radius:8px; line-height:1; margin-left:6px; }
+  .wbtn { background:rgba(255,255,255,0.12); color:#eaf2ff; font-size:14px; padding:7px 0;
+          width:40px; text-align:center; border-radius:8px; line-height:1; margin-left:6px; }
   .wbtn:hover { background:rgba(255,255,255,0.28); color:#fff; }
   .wbtn.close:hover { background:#e23b4e; color:#fff; }
 
@@ -150,15 +150,16 @@
 <body>
 <div class="topbar" onmousedown="dragStart()" ondblclick="topbarDbl()" title="拖动顶栏移动窗口 · 双击最大化/还原">
   <span class="wctrl">
-    <button class="wbtn" onclick="toggleMax()" title="最大化/还原">▢</button>
-    <button class="wbtn close" onclick="window.close()" title="关闭">✕</button>
+    <button class="wbtn" id="btn-lang" onclick="toggleLang()" title="中文 / English">EN</button>
+    <button class="wbtn" onclick="winMin()" title="最小化">&#8211;</button>
+    <button class="wbtn" onclick="toggleMax()" title="最大化/还原">&#9633;</button>
+    <button class="wbtn close" onclick="window.close()" title="关闭">&#10005;</button>
   </span>
   <h1>💬 Claude 对话总览</h1>
   <span class="tb"><button id="btn-refresh" onclick="refresh()">🔄 刷新</button></span>
   <span class="tb"><button id="sort-time" class="ghost active" onclick="setSort('time')">时间↓</button></span>
   <span class="tb"><button id="sort-title" class="ghost" onclick="setSort('title')">标题</button></span>
   <span class="tb"><button id="density" class="ghost" onclick="toggleDensity()">紧凑</button></span>
-  <span class="tb"><button id="btn-lang" class="ghost" onclick="toggleLang()">EN</button></span>
   <span class="tb"><input id="filter" type="text" placeholder="搜索" onkeyup="onSearch()" /></span>
   <span class="stats" id="stats"></span>
 </div>
@@ -809,6 +810,12 @@ document.onmousemove = function(){
   window.moveTo(DWX + (e.screenX - DSX), DWY + (e.screenY - DSY));
 };
 document.onmouseup = function(){ DRAG=false; };
+function winMin(){
+  try {
+    (new ActiveXObject("WScript.Shell")).Run(
+      'powershell -NoProfile -ExecutionPolicy Bypass -File "' + DIR + '\\winmin.ps1"', 0, false);
+  } catch(e){}
+}
 var MAXED=false;
 function toggleMax(){
   if(!MAXED){ window.moveTo(0,0); window.resizeTo(screen.availWidth, screen.availHeight); MAXED=true; }
