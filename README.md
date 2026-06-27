@@ -127,7 +127,7 @@ wisptermctl spawn --cwd <项目目录> -- powershell -NoProfile -NoExit -Command
 
 ## 故障排查
 
-- **双击进了 PowerShell 而不是 WispTerm**:WispTerm 没开,或 `agent-control-enabled` 未启用/未重启。先跑 `wisptermctl.exe panes` 确认接口通。
+- **双击进了 PowerShell 而不是 WispTerm**:多半是没把 `wisptermctl.exe` 放进本文件夹,或 WispTerm 没开 / `agent-control-enabled` 未启用·未重启。**首次回退到 PowerShell 时会弹一次性提示**告诉你如何启用(只弹一次,标记文件 `.wisp-notice-shown`,删掉它可让提示再弹一次)。先跑 `wisptermctl.exe panes` 确认接口通。
 - **恢复报"盘根禁止启动"之类**:你的 PowerShell `$PROFILE` 里有自定义守卫;脚本已先 `Set-Location` 进项目目录,正常不会触发。
 - **界面白屏/脚本错**:确保未把 `index.hta` 的文档模式改成 `IE=edge`/`IE=10+`(那会强制 Windows 标题栏);本项目用 `IE=9` 以实现无边框。
 - **窗口没有圆角/投影**:部分 Win11 主题/显卡设置会弱化投影,属正常。

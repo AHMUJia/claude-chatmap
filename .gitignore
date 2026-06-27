@@ -7,6 +7,9 @@ deleted/
 wisptermctl.exe
 wisptermctl
 
+# 一次性提示标记（首次回退到 PowerShell 时生成）
+.wisp-notice-shown
+
 # 备份/临时
 *.bak
 *.bak-*

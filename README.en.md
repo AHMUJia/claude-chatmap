@@ -127,7 +127,7 @@ wisptermctl spawn --cwd <project-dir> -- powershell -NoProfile -NoExit -Command 
 
 ## Troubleshooting
 
-- **Double-click opens PowerShell instead of WispTerm** — WispTerm isn't running, or `agent-control-enabled` isn't set/restarted. Run `wisptermctl.exe panes` to confirm the API is live.
+- **Double-click opens PowerShell instead of WispTerm** — usually `wisptermctl.exe` isn't in this folder, or WispTerm isn't running / `agent-control-enabled` isn't set·restarted. **The first time it falls back to PowerShell, a one-time dialog explains how to enable the integration** (shown only once; delete the marker `.wisp-notice-shown` to see it again). Run `wisptermctl.exe panes` to confirm the API is live.
 - **Resume blocked by a "drive-root" guard** — your PowerShell `$PROFILE` has a custom guard; the script `Set-Location`s into the project dir first, so this normally won't trigger.
 - **Blank UI / script error** — make sure `index.hta`'s document mode isn't `IE=edge`/`IE=10+` (that forces a Windows title bar); this project uses `IE=9` for the frameless window.
 - **No rounded corners / shadow** — some Win11 themes/GPU settings dim the shadow; this is expected.
