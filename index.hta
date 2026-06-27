@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=9">
-<title>Claude 对话总览</title>
+<title>Claude 会话索引 · ChatMap</title>
 <hta:application id="app" applicationname="ClaudeChats"
   border="thin" caption="no" showintaskbar="yes" scroll="no" singleinstance="yes" />
 <style>
@@ -155,7 +155,7 @@
     <button class="wbtn" onclick="toggleMax()" title="最大化/还原">&#9633;</button>
     <button class="wbtn close" onclick="window.close()" title="关闭">&#10005;</button>
   </span>
-  <h1>💬 Claude 对话总览</h1>
+  <h1 id="apptitle">💬 Claude 会话索引</h1>
   <span class="tb"><button id="btn-refresh" onclick="refresh()">🔄 刷新</button></span>
   <span class="tb"><button id="sort-time" class="ghost active" onclick="setSort('time')">时间↓</button></span>
   <span class="tb"><button id="sort-title" class="ghost" onclick="setSort('title')">标题</button></span>
@@ -286,6 +286,7 @@ function hl(text, term){
 
 /* ============ 多语言 i18n ============ */
 var I18N = {
+  appName:{zh:"💬 Claude 会话索引",en:"💬 Claude ChatMap"},
   refresh:{zh:"🔄 刷新",en:"🔄 Refresh"},
   sortTime:{zh:"时间↓",en:"Time↓"}, sortTitle:{zh:"标题",en:"Title"},
   compact:{zh:"紧凑",en:"Compact"}, comfortable:{zh:"舒适",en:"Comfortable"},
@@ -333,6 +334,7 @@ function applyLang(){
   document.getElementById("sort-title").innerHTML = t("sortTitle");
   document.getElementById("filter").placeholder   = t("searchPH");
   document.getElementById("btn-lang").innerHTML    = (LANG=="zh") ? "EN" : "中";
+  document.getElementById("apptitle").innerHTML    = t("appName");
   applyDensity();
   renderCtxMenu();
   if(!SELSID){ document.getElementById("detail").innerHTML = '<div class="dt-empty">' + t("detailEmpty") + '</div>'; }

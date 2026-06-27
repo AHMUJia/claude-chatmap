@@ -1,4 +1,4 @@
-# Claude 对话总览 · Claude Chat Index
+# Claude 会话索引 · Claude ChatMap
 
 > A local, dependency-free dashboard for all your **Claude Code** conversations.
 > Browse every session by folder, see its title / time / size, preview the last
@@ -73,7 +73,7 @@ wisptermctl.exe panes
 能返回一段 JSON(标签列表)即代表接口已通。
 
 ### 3) 直接用
-在「对话总览」里**双击**任意对话,即会:
+在「Claude 会话索引」里**双击**任意对话,即会:
 ```
 wisptermctl spawn --cwd <项目目录> -- powershell -NoProfile -NoExit -Command "Set-Location <项目目录>; claude -r <会话ID>"
 ```
