@@ -106,16 +106,7 @@ wisptermctl spawn --cwd <项目目录> -- powershell -NoProfile -NoExit -Command
 
 ## 工作原理 How it works
 
-```
-refresh.ps1 ──扫描 *.jsonl──► index.json ──读取──► index.hta(界面)
-                                                       │ 双击对话
-                                                       ▼
-                              resume-in-wispterm.ps1 -Cwd <目录> -Sid <会话ID>
-                                       │
-                  WispTerm 接口可达 ───┴─── 不可达
-                          │                    │
-       wisptermctl spawn …（新标签恢复）   独立 PowerShell 窗口（回退恢复）
-```
+![工作原理 / How it works](how-it-works.png)
 
 - 标题优先级:`custom-title` > `ai-title` > 首句提问;空会话与 `[Request interrupted…]` 自动过滤。
 - 会话目录从 jsonl 的 `cwd` 字段读取(不靠目录名,避免 CJK 编码丢失)。
