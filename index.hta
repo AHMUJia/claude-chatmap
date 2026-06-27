@@ -792,6 +792,8 @@ document.getElementById("sort-time").className  = "ghost" + (SORT=="time" ?" act
 document.getElementById("sort-title").className = "ghost" + (SORT=="title"?" active":"");
 document.onclick = function(){ hideCtx(); };   // 点别处关右键菜单
 load();
+// 打开时自动刷新一次：先用上次数据秒显，稍后重扫 *.jsonl 更新列表
+window.setTimeout(refresh, 150);
 
 // 给无边框窗口加 Win11 圆角 + 投影（DWM/Win32，由外部脚本应用）
 try {
