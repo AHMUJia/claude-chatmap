@@ -13,9 +13,15 @@
 
 ## 截图 / Screenshot
 
-> 运行 `index.hta` 后:左侧文件夹树 · 中间对话列表 · 右侧详情面板。
-> (把你的截图放到 `docs/screenshot.png` 并取消下一行注释)
-> <!-- ![screenshot](docs/screenshot.png) -->
+左侧文件夹树 · 中间对话列表 · 右侧详情面板 · 一键中英文切换。
+
+**中文 / Chinese**
+
+![中文界面](shoot_CN.png)
+
+**English**
+
+![English UI](shoot_EN.png)
 
 ---
 
