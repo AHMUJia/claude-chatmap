@@ -15,17 +15,20 @@ $exe = Join-Path $PSScriptRoot 'wisptermctl.exe'
 $cwdEsc = $Cwd.Replace("'", "''")
 $inner  = "Set-Location -LiteralPath '$cwdEsc'; claude -r $Sid"
 
-# Is WispTerm running with agent-control reachable?
+# Is WispTerm available AND its agent-control API reachable?
+# (No wisptermctl.exe / WispTerm not running / API off  ->  $reachable stays $false)
 $reachable = $false
-try {
-  $p = & $exe panes 2>$null
-  if ($LASTEXITCODE -eq 0 -and $p) { $reachable = $true }
-} catch { $reachable = $false }
+if (Test-Path -LiteralPath $exe) {
+  try {
+    $p = & $exe panes 2>$null
+    if ($LASTEXITCODE -eq 0 -and $p) { $reachable = $true }
+  } catch { $reachable = $false }
+}
 
 if ($reachable) {
   # New WispTerm tab: launch powershell straight into the resume command.
   & $exe spawn --cwd $Cwd -- powershell -NoProfile -NoExit -Command $inner 2>$null | Out-Null
 } else {
-  # Fallback: standalone PowerShell window.
+  # Fallback (no WispTerm): standalone PowerShell window runs the same claude -r.
   Start-Process powershell -ArgumentList '-NoProfile','-NoExit','-Command',$inner
 }
