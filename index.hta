@@ -157,6 +157,7 @@
   </span>
   <h1 id="apptitle">💬 Claude 会话索引</h1>
   <span class="tb"><button id="btn-refresh" onclick="refresh()">🔄 刷新</button></span>
+  <span class="tb"><button id="btn-new" onclick="newConvPrompt()" title="在某个文件夹里直接开一个全新对话（路径不存在会自动创建）">➕ 新对话</button></span>
   <span class="tb"><button id="sort-time" class="ghost active" onclick="setSort('time')">时间↓</button></span>
   <span class="tb"><button id="sort-title" class="ghost" onclick="setSort('title')">标题</button></span>
   <span class="tb"><button id="density" class="ghost" onclick="toggleDensity()">紧凑</button></span>
@@ -191,6 +192,7 @@ var PS_SCRIPT     = DIR + "\\refresh.ps1";
 var WISPCTL       = DIR + "\\wisptermctl.exe";
 var RESUME_PS     = DIR + "\\resume-in-wispterm.ps1";
 var DEL_PS        = DIR + "\\delete-conv.ps1";
+var NEW_PS        = DIR + "\\new-conv.ps1";
 var SETTINGS_PATH = DIR + "\\settings.json";
 
 var DATA = [];          // 全部对话（已剔除空对话），按时间倒序
@@ -208,6 +210,7 @@ var SID2CONV = {};      // sessionId -> 对话对象
 var SELSID = "";        // 当前在详情面板查看的对话
 var LASTROW = null;     // 当前高亮的列表行
 var FAVS = {};          // sessionId -> true（收藏）
+var MYFOLDERS = [];     // 用户在软件里新建的文件夹 [{path, ts}]（即使还没有对话也显示在树里）
 
 /* ============ 基础工具 ============ */
 function readUtf8(path){
@@ -317,7 +320,16 @@ var I18N = {
   sToday:{zh:"今天",en:"today"},
   statConv:{zh:"对话",en:"convs"}, statFolders:{zh:"文件夹",en:"folders"},
   statShown:{zh:"当前",en:"shown"}, statShownUnit:{zh:"条",en:""}, statUpdate:{zh:"更新",en:"updated"},
-  found:{zh:"找到",en:"found"}, fromN:{zh:"来自",en:"in"}, searchWord:{zh:"搜索",en:"Search"}
+  found:{zh:"找到",en:"found"}, fromN:{zh:"来自",en:"in"}, searchWord:{zh:"搜索",en:"Search"},
+  btnNew:{zh:"➕ 新对话",en:"➕ New chat"},
+  hNewChat:{zh:"➕ 新对话",en:"➕ New chat"},
+  hNewSub:{zh:"➕ 子文件夹",en:"➕ Subfolder"},
+  promptNewConv:{zh:"在哪个文件夹开始新对话？\n输入完整路径（不存在会自动创建）：",en:"Start a new chat in which folder?\nEnter a full path (created if it does not exist):"},
+  promptNewFolder:{zh:"在此文件夹下新建子文件夹，输入名称：",en:"New subfolder name (created under this folder):"},
+  badName:{zh:"名称含有非法字符 \\ / : * ? \" < > | ，请重新输入。",en:"Name contains illegal characters \\ / : * ? \" < > | — try again."},
+  noFolderNew:{zh:"该项目没有有效的文件夹路径，无法在此新建对话。",en:"This item has no valid folder path."},
+  emptyFolder:{zh:"这个文件夹还没有对话。点上方「➕ 新对话」在这里开始一个。",en:"No conversations here yet. Click ➕ New chat above to start one."},
+  newTag:{zh:"新",en:"new"}
 };
 function t(k){ var e=I18N[k]; if(!e) return k; return (e[LANG]!=null)?e[LANG]:e.zh; }
 
@@ -330,6 +342,7 @@ function renderCtxMenu(){
 }
 function applyLang(){
   document.getElementById("btn-refresh").innerHTML = t("refresh");
+  document.getElementById("btn-new").innerHTML     = t("btnNew");
   document.getElementById("sort-time").innerHTML  = t("sortTime");
   document.getElementById("sort-title").innerHTML = t("sortTitle");
   document.getElementById("filter").placeholder   = t("searchPH");
@@ -374,6 +387,61 @@ function copyCmd(cwd, sid){
   window.clipboardData.setData("Text", cmd);
 }
 function copyText(t){ window.clipboardData.setData("Text", t); }
+
+/* ============ 新建对话 / 新建文件夹 ============ */
+function strim(s){ return String(s).replace(/^\s+|\s+$/g, ""); }
+function isMyFolder(lc){
+  for(var i=0;i<MYFOLDERS.length;i++){ if(String(MYFOLDERS[i].path).toLowerCase()==lc) return true; }
+  return false;
+}
+// 在指定文件夹里启动一个全新的 claude（无 -r）；mkdir=true 则先创建该文件夹
+function newConvAt(cwd, mkdir){
+  try {
+    var sh = new ActiveXObject("WScript.Shell");
+    var cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File "' + NEW_PS +
+              '" -Cwd "' + cwd + '"' + (mkdir ? ' -MkDir' : '');
+    sh.Run(cmd, 0, false);
+  } catch(e){ alert("启动失败: " + e.message); }
+}
+// 把用户新建的文件夹记下来，使其即使还没有对话也显示在树里，并选中它
+function rememberFolder(full){
+  var lc = String(full).toLowerCase();
+  var found = false;
+  for(var i=0;i<MYFOLDERS.length;i++){ if(String(MYFOLDERS[i].path).toLowerCase()==lc){ found=true; break; } }
+  if(!found){ MYFOLDERS.push({ path:full, ts:Math.floor((new Date()).getTime()/1000) }); }
+  saveSettings();
+  buildTree();
+  selectFolder(lc);   // 选中并渲染（内部会 renderSidebar + renderMain）
+}
+// folder header 的「➕ 新对话」：在该文件夹里直接开新对话（已在树里，无需创建/记录）
+function newConv(cwd){
+  if(!cwd || cwd.charAt(0)=="("){ alert(t("noFolderNew")); return; }
+  newConvAt(cwd, false);
+}
+// folder header 的「➕ 子文件夹」：在该文件夹下新建子文件夹并在其中开对话
+function newSub(parent){
+  if(!parent || parent.charAt(0)=="("){ alert(t("noFolderNew")); return; }
+  var name = window.prompt(t("promptNewFolder"), "");
+  if(name==null) return;
+  name = strim(name);
+  if(name=="") return;
+  if(/[\\\/:*?"<>|]/.test(name)){ alert(t("badName")); return; }
+  var full = parent.replace(/\\+$/,"") + "\\" + name;
+  newConvAt(full, true);
+  rememberFolder(full);
+}
+// 顶栏「➕ 新对话」：输入任意完整路径（不存在则创建）后开对话
+function newConvPrompt(){
+  var base = "";
+  if(SELECTED!="__recent__" && SELECTED!="__fav__" && SELECTED.charAt(0)!="(" && SELECTED.indexOf("\\")>=0)
+    base = GROUPREP[SELECTED] || SELECTED;
+  var p = window.prompt(t("promptNewConv"), base);
+  if(p==null) return;
+  p = strim(p);
+  if(p=="") return;
+  newConvAt(p, true);
+  rememberFolder(p);
+}
 
 /* ============ 删除对话（移到回收区 deleted\） ============ */
 function delConv(cwd, sid){
@@ -421,11 +489,21 @@ function loadSettings(){
       if(s.selectedFolder) SELECTED = s.selectedFolder;
       if(s.favs) FAVS = s.favs;
       if(s.lang) LANG = s.lang;
+      if(s.myFolders && s.myFolders.length){
+        var fso = null; try { fso = new ActiveXObject("Scripting.FileSystemObject"); } catch(e){}
+        for(var i=0;i<s.myFolders.length;i++){
+          var mf = s.myFolders[i];
+          if(!mf || !mf.path) continue;
+          // 磁盘上已被删除的就不再显示
+          if(fso){ try { if(!fso.FolderExists(mf.path)) continue; } catch(e){} }
+          MYFOLDERS.push({ path:mf.path, ts:(mf.ts||0) });
+        }
+      }
     }
   } catch(e){}
 }
 function saveSettings(){
-  var o = { sort:SORT, density:DENSITY, selectedFolder:SELECTED, favs:FAVS, lang:LANG };
+  var o = { sort:SORT, density:DENSITY, selectedFolder:SELECTED, favs:FAVS, lang:LANG, myFolders:MYFOLDERS };
   try { writeUtf8(SETTINGS_PATH, JSON.stringify(o)); } catch(e){}
 }
 function favCount(){ var n=0; for(var k in FAVS){ if(FAVS.hasOwnProperty(k) && FAVS[k]) n++; } return n; }
@@ -455,7 +533,7 @@ function buildGroups(){
 }
 
 /* ============ 文件夹树（像资源管理器） ============ */
-function newNode(name, full){ return { name:name, full:full, kids:{}, korder:[], direct:0, recent:0 }; }
+function newNode(name, full){ return { name:name, full:full, kids:{}, korder:[], direct:0, recent:0, mine:false, mineTs:0 }; }
 function buildTree(){
   TREE = newNode("", "");
   for(var i=0;i<FORDER.length;i++){
@@ -474,6 +552,26 @@ function buildTree(){
     }
     node.direct = GROUPS[lc].length;
   }
+  // 注入用户新建的文件夹（即使还没有对话也显示）
+  for(var mi=0;mi<MYFOLDERS.length;mi++){
+    var rep = MYFOLDERS[mi].path, mts = MYFOLDERS[mi].ts || 0;
+    if(!rep) continue;
+    var mlc = String(rep).toLowerCase();
+    if(GROUPS[mlc]) continue;                    // 已有真实对话，树里已存在
+    var mlparts = mlc.split("\\"), mrparts = rep.split("\\");
+    var mnode = TREE, macc = "", mracc = "";
+    for(var mp=0;mp<mlparts.length;mp++){
+      var mseg = mlparts[mp]; if(mseg == "") continue;
+      var mdisp = (mp < mrparts.length) ? mrparts[mp] : mseg;
+      macc  = (macc  == "") ? mseg  : (macc  + "\\" + mseg);
+      mracc = (mracc == "") ? mdisp : (mracc + "\\" + mdisp);
+      if(!mnode.kids[mseg]){ mnode.kids[mseg] = newNode(mdisp, macc); mnode.korder.push(mseg); }
+      mnode = mnode.kids[mseg];
+    }
+    mnode.mine = true;
+    if(mts > mnode.mineTs) mnode.mineTs = mts;
+    if(!GROUPREP[mlc]) GROUPREP[mlc] = rep;       // 让选中后 header 显示真实大小写路径
+  }
   calcRecent(TREE);
   sortKids(TREE);
 }
@@ -483,6 +581,7 @@ function calcRecent(node){
   if(node.direct > 0 && GROUPS[node.full] && GROUPS[node.full][0]){
     var t = GROUPS[node.full][0].ts || 0; if(t > r) r = t;
   }
+  if(node.mineTs && node.mineTs > r) r = node.mineTs;   // 新建空文件夹按创建时间排序
   for(var i=0;i<node.korder.length;i++){ var cr = calcRecent(node.kids[node.korder[i]]); if(cr > r) r = cr; }
   node.recent = r;
   return r;
@@ -540,8 +639,8 @@ function renderNode(node, depth, out){
     var collapsed = COLLAPSED[c.full] ? true : false;
     var pad = 6 + depth * 16;
     var sel = (SELECTED == c.full) ? " active" : "";
-    // 行点击：有直接对话→选中显示；纯容器→展开/折叠
-    var rowClick = (c.direct > 0)
+    // 行点击：有直接对话或是新建文件夹→选中显示；纯容器→展开/折叠
+    var rowClick = (c.direct > 0 || c.mine)
         ? 'onclick="selectFolder(\'' + jsArg(c.full) + '\')"'
         : 'onclick="toggleNode(\'' + jsArg(c.full) + '\')"';
     out.push('<div class="tree-item' + sel + '" style="padding-left:' + pad + 'px" title="' + attr(GROUPREP[c.full] || c.full) + '" ' + rowClick + '>');
@@ -560,6 +659,7 @@ function renderNode(node, depth, out){
     } else {
       var st = subtotal(c);
       if(st > 0) out.push('<span class="cnt dim">' + st + '</span>');
+      else if(c.mine) out.push('<span class="cnt dim">' + t("newTag") + '</span>');
     }
     out.push('</div>');
     if(hasKids && !collapsed) renderNode(c, depth+1, out);
@@ -704,14 +804,24 @@ function renderMain(){
   var list = GROUPS[SELECTED] ? sortList(GROUPS[SELECTED]) : [];
   var recent = GROUPS[SELECTED] ? GROUPS[SELECTED][0].modified : "";
   var repPath = GROUPREP[SELECTED] || SELECTED;   // 显示/操作用真实路径写法
+  var metaLine = list.length
+      ? (list.length + ' ' + t("conv") + ' · ' + t("latest") + ' ' + esc(recent))
+      : ('0 ' + t("conv"));
   var hh = '<div class="folder-header">' +
            '<span class="fp" title="' + attr(repPath) + '">📁 ' + esc(repPath) + '</span>' +
-           '<span class="folder-meta">' + list.length + ' ' + t("conv") + ' · ' + t("latest") + ' ' + esc(recent) +
-           ' &nbsp; <button class="copybtn" onclick="copyText(\'' + jsArg(repPath) + '\')">' + t("copyPath") + '</button>' +
+           '<span class="folder-meta">' + metaLine +
+           ' &nbsp; <button class="copybtn" onclick="newConv(\'' + jsArg(repPath) + '\')">' + t("hNewChat") + '</button>' +
+           '<button class="copybtn" onclick="newSub(\'' + jsArg(repPath) + '\')">' + t("hNewSub") + '</button>' +
+           '<button class="copybtn" onclick="copyText(\'' + jsArg(repPath) + '\')">' + t("copyPath") + '</button>' +
            '<button class="copybtn" onclick="openFolder(\'' + jsArg(repPath) + '\')">' + t("open") + '</button></span>' +
-           '</div><div class="list">';
-  for(var m=0;m<list.length;m++) hh += rowHtml(list[m], "", false);
-  hh += '</div>';
+           '</div>';
+  if(list.length){
+    hh += '<div class="list">';
+    for(var m=0;m<list.length;m++) hh += rowHtml(list[m], "", false);
+    hh += '</div>';
+  } else {
+    hh += '<div class="empty">' + t("emptyFolder") + '</div>';
+  }
   mainEl.innerHTML = hh;
   setStats(list.length, "");
 }
@@ -766,8 +876,9 @@ function load(){
     return;
   }
   buildGroups();
-  // 选中项若已不存在则回退到“最近全部”
-  if(SELECTED!="__recent__" && !GROUPS[SELECTED]) SELECTED = "__recent__";
+  // 选中项若已不存在则回退到“最近全部”（收藏视图、用户新建文件夹除外）
+  if(SELECTED!="__recent__" && SELECTED!="__fav__" && !GROUPS[SELECTED] && !isMyFolder(SELECTED))
+    SELECTED = "__recent__";
   renderSidebar(); renderMain();
 }
 function refresh(){

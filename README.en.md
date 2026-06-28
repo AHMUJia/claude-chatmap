@@ -13,6 +13,7 @@ A local, **zero-dependency dashboard for all your Claude Code conversations**. I
 
 - 🗺 **Find it instantly** — every chat is auto-grouped into a folder tree by where it was opened. No more needle-in-a-haystack.
 - ⚡ **Resume in one double-click** — opens a new WispTerm tab, `cd`s into the project dir and restores the chat: **no typing paths, no clicking resume, no scrolling the picker** (falls back to plain PowerShell if WispTerm isn't installed).
+- ➕ **Start a new chat anywhere** — open a brand-new `claude` in any folder (top-bar **➕ New chat** to type a path, or a folder's **➕ New chat** button); you can even **create a folder right from the app** (a real folder on disk) and start chatting in it.
 - 📦 **See the size** — every conversation shows its size (KB/MB), so bloated chats that silently burn your quota are obvious at a glance.
 - 🔍 **Searchable** — by title / path / date, plus a content preview (last question & last reply) so you know what a chat was about without opening it.
 - ⭐ **Favorite & manage** — star the ones you use, right-click to delete the stale ones; one-click CN/EN toggle.
@@ -37,6 +38,7 @@ Folder tree (left) · conversation list (middle) · detail panel (right) · one-
 - 🔍 **Search** — plain text or `folder:` / `date:` / `after:` / `before:` syntax, with keyword highlight.
 - 📄 **Detail panel** (single-click) — full title / time / size / path, content preview (last question + last reply), related conversations in the same folder, quick actions.
 - ▶ **One-click resume** — **double-click** a chat → new WispTerm tab, `cd` into the project, `claude -r <id>` (falls back to a standalone PowerShell window if WispTerm isn't running).
+- ➕ **New chat / new folder** — top-bar **➕ New chat** takes any path (created if missing) and starts a fresh `claude`; a selected folder gets **➕ New chat** / **➕ Subfolder** buttons — the subfolder is **actually created on disk** and a chat starts in it. Folders you create in-app show up in the tree (tagged "new") even before they have any conversation; they're stored in `settings.json`.
 - 🗑 **Delete** — moves the session `.jsonl` to `deleted/` (removed from Claude, still recoverable).
 - 🪟 Frameless window + Win11 rounded corners/shadow + compact/comfortable density + remembered settings + **one-click CN/EN toggle**.
 
@@ -89,6 +91,8 @@ wisptermctl spawn --cwd <project-dir> -- powershell -NoProfile -NoExit -Command 
 
 > If WispTerm isn't running or the API is off, it **automatically falls back** to a standalone PowerShell window running the same `claude -r` — functionality unaffected.
 
+> **➕ New chat / ➕ Subfolder** use the same mechanism (`new-conv.ps1`), just running `claude` (no `-r`): a new WispTerm tab when available, otherwise a PowerShell fallback.
+
 ---
 
 ## Files
@@ -98,6 +102,7 @@ wisptermctl spawn --cwd <project-dir> -- powershell -NoProfile -NoExit -Command 
 | `index.hta` | Main UI (double-click to open; path-adaptive, locates sibling files). |
 | `refresh.ps1` | Scans Claude sessions (`*.jsonl`) → builds `index.json`; auto-detects the projects dir. |
 | `resume-in-wispterm.ps1` | Resume: new WispTerm tab `claude -r`, falls back to standalone PowerShell. |
+| `new-conv.ps1` | New chat: optionally create the folder first, then `claude` (no -r) in a new WispTerm tab, falls back to standalone PowerShell. |
 | `delete-conv.ps1` | Delete: moves the session `.jsonl` to `deleted/`. |
 | `style-window.ps1` | Win11 rounded corners + shadow for the frameless window (DWM/Win32). |
 | `winmin.ps1` | Minimize the frameless window (Win32 ShowWindow). |

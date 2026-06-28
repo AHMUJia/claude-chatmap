@@ -13,6 +13,7 @@
 
 - 🗺 **一眼定位** — 所有对话按"开在哪个文件夹"自动分组成树,哪次聊在哪个项目一目了然,不用再大海捞针。
 - ⚡ **双击即续** — 看中哪条,双击就在 WispTerm 新标签里自动 `cd` 进目录、直接恢复:**不用敲路径、不用点 resume、不用翻选择器**(没装 WispTerm 自动回退普通 PowerShell)。
+- ➕ **一键新对话** — 在任意文件夹直接开一个**全新** `claude` 对话(顶栏「➕ 新对话」填路径,或选中文件夹后点其标题栏的「➕ 新对话」);还能在软件里**新建文件夹**(同时在硬盘上真建一个),立刻在里面开聊。
 - 📦 **大小看得见** — 每个对话直接标出体积 (KB/MB),哪个对话"超重"、悄悄吃额度,一眼看穿。
 - 🔍 **找得到** — 标题/路径/日期搜索 + 内容预览(最近提问 & 最后回复),不打开就知道是哪次聊的什么。
 - ⭐ **收藏 & 管理** — 常用一键收藏,过时右键删除;中英文一键切换。
@@ -37,6 +38,7 @@
 - 🔍 **搜索**:纯文字,或 `folder:` / `date:` / `after:` / `before:` 语法,关键词高亮。
 - 📄 **详情面板**(单击):完整标题/时间/大小/路径、内容预览(最近提问 + 最后回复)、同文件夹相关对话、快捷操作。
 - ▶ **一键恢复**:**双击**对话 → 在运行中的 WispTerm 新开标签、cd 进项目目录、`claude -r <id>` 恢复(WispTerm 没开则回退到独立 PowerShell 窗口)。
+- ➕ **新对话 / 新建文件夹**:顶栏「➕ 新对话」输入任意路径(不存在自动创建)开一个全新 `claude`;选中文件夹后,其标题栏有「➕ 新对话」「➕ 子文件夹」——子文件夹会**真的在硬盘上创建**并立刻在其中开聊。软件里新建的文件夹即使还没有对话也会显示在左侧树里(标「新」),其底层数据记在 `settings.json`。
 - 🗑 **删除**:把会话 `.jsonl` 移到 `deleted/`(从 Claude 移除,可找回)。
 - 🪟 无边框窗口 + Win11 圆角/投影 + 紧凑/舒适密度 + 设置记忆 + **中英文一键切换**。
 
@@ -89,6 +91,8 @@ wisptermctl spawn --cwd <项目目录> -- powershell -NoProfile -NoExit -Command
 
 > 若 WispTerm 未运行或接口未启用,会**自动回退**到弹出一个独立 PowerShell 窗口执行同样的 `claude -r`,功能不受影响。
 
+> 「➕ 新对话 / ➕ 子文件夹」走的是同一套机制(`new-conv.ps1`),只是执行 `claude`(无 `-r`),同样优先落进 WispTerm 新标签、否则回退 PowerShell。
+
 ---
 
 ## 文件结构
@@ -98,6 +102,7 @@ wisptermctl spawn --cwd <项目目录> -- powershell -NoProfile -NoExit -Command
 | `index.hta` | 主界面(双击打开;路径自适应,定位同目录其他文件)。 |
 | `refresh.ps1` | 扫描 Claude 会话(`*.jsonl`)→ 生成 `index.json`;自动探测 projects 目录。 |
 | `resume-in-wispterm.ps1` | 恢复对话:WispTerm 新标签 `claude -r`,失败回退独立 PowerShell。 |
+| `new-conv.ps1` | 新对话:可选先建文件夹,再在 WispTerm 新标签 `claude`(无 -r),失败回退独立 PowerShell。 |
 | `delete-conv.ps1` | 删除:把会话 `.jsonl` 移到 `deleted/`。 |
 | `style-window.ps1` | 给无边框窗口加 Win11 圆角 + 投影(DWM/Win32)。 |
 | `winmin.ps1` | 最小化无边框窗口(Win32 ShowWindow)。 |
